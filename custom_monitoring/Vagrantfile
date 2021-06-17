@@ -1,0 +1,57 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+BOX_MACHINE="centos/7"
+$script = <<-SCRIPT
+useradd --no-create-home --shell /bin/false prometheus
+useradd --no-create-home --shell /bin/false node_exporter
+
+mkdir /etc/prometheus
+mkdir /var/lib/prometheus
+
+chown prometheus:prometheus /etc/prometheus
+chown prometheus:prometheus /var/lib/prometheus
+
+yum install -y epel-release
+yum install -y wget
+wget https://github.com/prometheus/prometheus/releases/download/v2.27.1/prometheus-2.27.1.linux-amd64.tar.gz
+tar xzfv prometheus-2.27.1.linux-amd64.tar.gz
+
+cp prometheus-2.27.1.linux-amd64/prometheus /usr/bin/
+cp prometheus-2.27.1.linux-amd64/promtool /usr/bin/
+
+chown prometheus:prometheus /usr/bin/prometheus
+chown prometheus:prometheus /usr/bin/promtool
+
+cp -r prometheus-2.27.1.linux-amd64/consoles /etc/prometheus
+cp -r prometheus-2.27.1.linux-amd64/console_libraries /etc/prometheus
+
+chown -R prometheus:prometheus /etc/prometheus/consoles
+chown -R prometheus:prometheus /etc/prometheus/console_libraries
+rm -rf prometheus-2.27.1.linux-amd64.tar.gz prometheus-2.27.1.linux-amd64
+SCRIPT
+
+
+
+
+
+Vagrant.configure("2") do |config|
+  config.vm.provision "shell", inline: "echo Hello"
+
+
+  config.vm.define "prometheus-custom" do |subconfig|
+    subconfig.vm.box = BOX_MACHINE
+    subconfig.vbguest.installer_options = {allow_kernel_upgrade: true}
+    subconfig.vm.hostname = "prometheus"
+    subconfig.vm.network "private_network", ip: "192.168.33.15"
+    subconfig.vm.provision "shell", inline: $script
+  end
+
+
+  config.vm.define "prod-custom" do |subconfig|
+    subconfig.vm.box = BOX_MACHINE
+    subconfig.vbguest.installer_options = {allow_kernel_upgrade: true}
+    subconfig.vm.hostname = "prod"
+    subconfig.vm.network "private_network", ip: "192.168.33.25"
+  end
+
+end
